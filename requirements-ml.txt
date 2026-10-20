@@ -1,0 +1,4 @@
+# NLP model: Hugging Face MiniLM via sentence-transformers.
+# Install CPU-only PyTorch first to avoid a ~2 GB CUDA download:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+sentence-transformers>=3.0,<6

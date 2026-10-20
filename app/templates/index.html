@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <h1>Shortlist the top {{ top_k }} candidates for a job</h1>
+    <p class="muted">Every resume is read by an NLP model and compared with the job description by meaning,
+      not just keywords. Pick one of the dataset's jobs or describe a new one.</p>
+  </div>
+  <dl class="stats">
+    <div><dt>Resumes in database</dt><dd>{{ counts.candidates }}</dd></div>
+    <div><dt>Dataset jobs</dt><dd>{{ counts.jobs }}</dd></div>
+    <div><dt>Rankings run</dt><dd>{{ counts.runs }}</dd></div>
+  </dl>
+</section>
+
+{% if counts.candidates == 0 %}
+  <div class="flash error">The database is empty. Load the dataset first:
+    <code>python scripts/load_db.py --csv resume_data.csv</code></div>
+{% endif %}
+
+<div class="grid-2">
+  <section class="card">
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="preset" type="button">Dataset job</button>
+      <button class="tab" data-tab="custom" type="button">New job description</button>
+    </div>
+
+    <form method="post" action="{{ url_for('rank') }}" class="rank-form" data-panel="preset">
+      <input type="hidden" name="mode" value="preset">
+      <label for="job_id">Job</label>
+      <select id="job_id" name="job_id" required>
+        <option value="" disabled selected>Choose one of {{ jobs|length }} jobs…</option>
+        {% for job in jobs %}
+          <option value="{{ job.id }}" data-skills="{{ (job.skills or [])|join(', ') }}"
+                  data-exp="{{ job.experience or 'Not specified' }}" data-edu="{{ job.education or 'Not specified' }}">{{ job.title }}</option>
+        {% endfor %}
+      </select>
+      <div class="job-preview" hidden>
+        <p><b>Experience</b> <span data-field="exp"></span></p>
+        <p><b>Education</b> <span data-field="edu"></span></p>
+        <p><b>Required skills</b> <span data-field="skills"></span></p>
+      </div>
+      <button class="btn primary" type="submit">Rank candidates</button>
+    </form>
+
+    <form method="post" action="{{ url_for('rank') }}" class="rank-form" data-panel="custom" hidden>
+      <input type="hidden" name="mode" value="custom">
+      <label for="title">Job title</label>
+      <input id="title" name="title" placeholder="e.g. Cloud DevOps Engineer" maxlength="255" required>
+      <label for="description">Job description</label>
+      <textarea id="description" name="description" rows="5"
+        placeholder="Responsibilities, tools, domain… the model reads this for meaning."></textarea>
+      <label for="skills">Required skills <span class="muted">(comma or new line separated)</span></label>
+      <textarea id="skills" name="skills" rows="3" placeholder="AWS, Docker, Kubernetes, CI/CD, Python"></textarea>
+      <div class="row-3">
+        <div><label for="min_years">Min. years</label><input id="min_years" name="min_years" type="number" min="0" max="50" step="0.5"></div>
+        <div><label for="max_years">Max. years</label><input id="max_years" name="max_years" type="number" min="0" max="50" step="0.5"></div>
+        <div><label for="education">Education</label><input id="education" name="education" placeholder="B.Tech in CS"></div>
+      </div>
+      <button class="btn primary" type="submit">Rank candidates</button>
+    </form>
+    <p class="hint">The first ranking after the server starts can take ~30 s while the model loads.</p>
+  </section>
+
+  <section class="card">
+    <h2>Recent rankings</h2>
+    {% if runs %}
+      <ul class="runs">
+        {% for run in runs %}
+          <li>
+            <a href="{{ url_for('run_page', run_id=run.id) }}">{{ run.job_title }}</a>
+            <span class="muted mono">#{{ run.id }} · {{ run.created_at.strftime('%d %b %H:%M') }} UTC</span>
+            <span class="tags">
+              {% if run.s3_key %}<span class="pill on small">S3</span>{% endif %}
+              {% if run.notified %}<span class="pill on small">SNS</span>{% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No rankings yet. Run one on the left.</p>
+    {% endif %}
+
+    <h2 class="mt">How a score is made</h2>
+    <ul class="explain">
+      <li><b>Semantic</b> MiniLM embeddings of resume and job, cosine similarity</li>
+      <li><b>Skills</b> share of required skills the candidate has, by exact or similar meaning</li>
+      <li><b>Experience</b> years from employment dates vs the job's requirement</li>
+    </ul>
+  </section>
+</div>
+{% endblock %}

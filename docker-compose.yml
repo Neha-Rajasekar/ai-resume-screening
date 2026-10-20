@@ -1,0 +1,47 @@
+# Run the whole system on your laptop: the app + a MySQL database (same engine as RDS).
+#
+#   docker compose up -d --build
+#   docker compose exec app python scripts/load_db.py --csv /dataset/resume_data.csv
+#   open http://localhost:5000
+#
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: resumedb
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: localpass
+      MYSQL_ROOT_PASSWORD: localroot
+    ports:
+      - "3307:3306"           # 3307 on the host, so it can't clash with a MySQL already installed
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-plocalroot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    image: resume-screening:local
+    container_name: resume-app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql+pymysql://appuser:localpass@db:3306/resumedb
+      SECRET_KEY: local-dev-secret
+      AWS_REGION: ap-southeast-2
+      # Fill these in to test S3/SNS from your laptop (needs `aws configure` credentials):
+      S3_BUCKET: ""
+      SNS_TOPIC_ARN: ""
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./resume_data.csv:/dataset/resume_data.csv:ro
+      - embed-cache:/app/data/cache
+
+volumes:
+  mysql-data:
+  embed-cache:

@@ -1,0 +1,19 @@
+# Dataset (download from Kaggle; uploaded to S3 for the cloud deployment)
+resume_data.csv
+resume_data*.csv
+
+# Local database, embedding cache, evaluation output
+data/
+*.db
+
+# Secrets
+.env
+app.env
+*.pem
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/

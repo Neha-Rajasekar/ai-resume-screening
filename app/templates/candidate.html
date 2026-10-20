@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ cand.label }}{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('run_page', run_id=run.id) if run else url_for('index') }}">← {{ 'Back to ranking' if run else 'Dashboard' }}</a>
+<section class="hero compact">
+  <div>
+    <p class="eyebrow mono">{{ cand.id }}</p>
+    <h1>{{ cand.label }}</h1>
+    <p class="muted">{{ (cand.positions or [])|join(' · ') or 'No roles listed' }} · {{ '%g'|format(cand.years_experience) }} years of experience</p>
+  </div>
+  {% if row %}
+  <dl class="stats">
+    <div><dt>Rank for {{ run.job_title|truncate(28) }}</dt><dd>#{{ row.rank }}</dd></div>
+    <div><dt>Final score</dt><dd>{{ row.final|pct }}</dd></div>
+  </dl>
+  {% endif %}
+</section>
+
+<div class="grid-2">
+  <section class="card">
+    {% if row %}
+      <h2>Score breakdown</h2>
+      <div class="meter"><span>Semantic</span><i style="--v: {{ (row.semantic * 100)|round(0) }}%"></i><b>{{ row.semantic|pct }}</b></div>
+      <div class="meter"><span>Skills</span><i style="--v: {{ ((row.skills or 0) * 100)|round(0) }}%"></i><b>{{ row.skills|pct }}</b></div>
+      <div class="meter"><span>Experience</span><i style="--v: {{ ((row.experience or 0) * 100)|round(0) }}%"></i><b>{{ row.experience|pct }}</b></div>
+      {% if row.matched_skills %}
+        <h3>Matched skills</h3>
+        <table class="mini">
+          <tr><th>Job requires</th><th>Candidate has</th><th class="num">Similarity</th></tr>
+          {% for m in row.matched_skills %}
+            <tr><td>{{ m.required }}</td><td>{{ m.candidate_skill }}</td><td class="num mono">{{ '%.2f'|format(m.similarity) }}</td></tr>
+          {% endfor %}
+        </table>
+      {% endif %}
+      {% if row.missing_skills %}
+        <h3>Missing skills</h3>
+        <p class="chips">{% for s in row.missing_skills %}<span class="chip miss">{{ s }}</span>{% endfor %}</p>
+      {% endif %}
+    {% endif %}
+    <h2 class="{{ 'mt' if row }}">Career objective</h2>
+    <p>{{ cand.objective or 'Not provided.' }}</p>
+  </section>
+
+  <section class="card">
+    <h2>Extracted information</h2>
+    <dl class="facts">
+      <dt>Skills</dt><dd><div class="chips">{% for s in cand.skills or [] %}<span class="chip">{{ s }}</span>{% else %}–{% endfor %}</div></dd>
+      <dt>Degrees</dt><dd>{{ (cand.degrees or [])|join(', ') or '–' }}</dd>
+      <dt>Field of study</dt><dd>{{ (cand.majors or [])|join(', ') or '–' }}</dd>
+      <dt>Institutions</dt><dd>{{ (cand.institutions or [])|join(', ') or '–' }}</dd>
+      <dt>Companies</dt><dd>{{ (cand.companies or [])|join(', ') or '–' }}</dd>
+      <dt>Certifications</dt><dd>{{ (cand.certifications or [])|join(', ') or '–' }}</dd>
+      <dt>Languages</dt><dd>{{ (cand.languages or [])|join(', ') or '–' }}</dd>
+    </dl>
+  </section>
+</div>
+{% endblock %}

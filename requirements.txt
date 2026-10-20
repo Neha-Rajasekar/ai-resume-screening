@@ -1,0 +1,10 @@
+# Web app, database, AWS (PyTorch / MiniLM are in requirements-ml.txt)
+flask>=3.0,<4
+gunicorn>=22,<24
+pandas>=2.0,<3
+numpy>=1.24,<3
+scikit-learn>=1.3,<2
+sqlalchemy>=2.0,<3
+pymysql>=1.1,<2
+cryptography>=42      # needed by pymysql for MySQL 8 default authentication
+boto3>=1.34,<2

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ run.job_title }}{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('index') }}">← Dashboard</a>
+<section class="hero compact">
+  <div>
+    <p class="eyebrow mono">Ranking #{{ run.id }} · {{ run.created_at.strftime('%d %b %Y, %H:%M') }} UTC · {{ run.embedder }}</p>
+    <h1>{{ run.job_title }}</h1>
+    <p class="muted">Top {{ rows|length }} of {{ run.total_candidates }} resumes screened.
+      {% if job and job.experience %}Experience: {{ job.experience }}.{% endif %}</p>
+    {% if job and job.skills %}
+      <p class="chips">{% for s in job.skills %}<span class="chip">{{ s }}</span>{% endfor %}</p>
+    {% endif %}
+  </div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('run_csv', run_id=run.id) }}">Download CSV</a>
+    <p class="muted small">
+      {{ 'Stored in S3' if run.s3_key else 'Not stored in S3' }} ·
+      {{ 'recruiters notified via SNS' if run.notified else 'no SNS alert sent' }}
+    </p>
+    {% if overlap is not none %}
+      <p class="agree"><b>{{ overlap }}/{{ rows|length }}</b> are in the dataset's own top {{ rows|length }}</p>
+      <p class="muted small">dataset top {{ rows|length }}: matched_score ≥ {{ '%.2f'|format(cutoff) }}
+        ({{ top_size }} candidates with ties) · a random pick would get ~{{ random_overlap }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card flush">
+  <table class="results">
+    <thead>
+      <tr>
+        <th>#</th><th>Candidate</th><th class="num">Score</th>
+        <th class="num">Semantic</th><th class="num">Skills</th><th class="num">Exp.</th>
+        <th>Matched skills</th>
+        {% if overlap is not none %}<th class="num" title="matched_score label from the Kaggle dataset; green = within the dataset's top {{ rows|length }} (score ≥ {{ '%.2f'|format(cutoff) }})">Dataset</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="mono">{{ r.rank }}</td>
+        <td>
+          <a href="{{ url_for('candidate_page', cand_id=r.candidate_id, run=run.id) }}">{{ r.label }}</a>
+          <div class="muted small">{{ (r.positions or [])[:2]|join(' · ') or 'No role listed' }} · {{ '%g'|format(r.years_experience) }} yrs</div>
+        </td>
+        <td class="num"><span class="bar" style="--v: {{ (r.final * 100)|round(0) }}%"></span><b>{{ r.final|pct }}</b></td>
+        <td class="num">{{ r.semantic|pct }}</td>
+        <td class="num">{{ r.skills|pct }}</td>
+        <td class="num">{{ r.experience|pct }}</td>
+        <td><div class="chips">
+          {% for m in (r.matched_skills or [])[:4] %}
+            <span class="chip ok" title="Required: {{ m.required }} · similarity {{ '%.2f'|format(m.similarity) }}">{{ m.candidate_skill }}</span>
+          {% endfor %}
+          {% if (r.matched_skills or [])|length > 4 %}<span class="muted small">+{{ (r.matched_skills|length) - 4 }}</span>{% endif %}
+          {% if not r.matched_skills and r.skills is none %}<span class="muted small">job lists no skills</span>{% endif %}
+        </div></td>
+        {% if overlap is not none %}
+          <td class="num mono {{ 'hit' if r.in_dataset_top }}">{{ '%.2f'|format(r.dataset_score) if r.dataset_score is not none else '–' }}</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
